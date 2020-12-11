@@ -1,5 +1,15 @@
 import java.io.File;
+import java.io.StringReader;
 import java.util.Scanner;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
 public class Government {
 
@@ -79,7 +89,39 @@ public class Government {
 
 			// code to read xml file & store data into data structure
 
+			try {
+				// Parser that produces DOM object trees from XML content
+				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+				// Create DocumentBuilder with default configuration
+				DocumentBuilder builder = factory.newDocumentBuilder();
+
+				// Parse the content to Document object
+				Document doc = builder.parse(new InputSource(new StringReader(xmlFileToRead)));
+				
+				NodeList contactList = doc.getElementsByTagName("contact");
+				// nodeList is not iterable, so we are using for loop
+				for (int itr = 0; itr < contactList.getLength(); itr++) {
+					Node node = contactList.item(itr);
+					System.out.println("\nNode Name :" + node.getNodeName());
+					if (node.getNodeType() == Node.ELEMENT_NODE) {
+						Element eElement = (Element) node;
+						
+						
+						System.out.println("Contact's id: " + eElement.getElementsByTagName("contact_hash").item(0).getTextContent());
+						System.out.println("Contact date: " + eElement.getElementsByTagName("date").item(0).getTextContent());
+						System.out.println("Contact duration: " + eElement.getElementsByTagName("duration").item(0).getTextContent());
+					}
+				}
+				
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+			
 			// Code to connect to database
+			
+			
+			
 		}
 
 		return contactedPositivePerson;

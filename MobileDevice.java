@@ -142,16 +142,20 @@ public class MobileDevice {
 			contactXMLString += ("\n<contact_info>");
 
 			for (String contact : DEVICE_CONTACTS.keySet()) {
-				contactXMLString += ("\n\t<contact>" + "\n\t\t<contact_hash>" + contact + "</contact_hash>"
-						+ "\n\t\t<date>" + DEVICE_CONTACTS.get(contact).get(0) + "</date>" + "\n\t\t<duration>"
-						+ DEVICE_CONTACTS.get(contact).get(1) + "</duration>" + "\n\t</contact>");
+				contactXMLString += ("\n\t<contact>" +
+										"\n\t\t<contact_hash>" + contact + "</contact_hash>" +
+										"\n\t\t<date>" + DEVICE_CONTACTS.get(contact).get(0) + "</date>" +
+										"\n\t\t<duration>" + DEVICE_CONTACTS.get(contact).get(1) + "</duration>" +
+									"\n\t</contact>");
 			}
 			contactXMLString += ("\n</contact_info>");
 
 			// creating Xml of testHash of mobile device and contact info of contacted
 			// devices
-			contactInfo = testHashesFormattedString + contactXMLString;
+			//contactInfo = testHashesFormattedString + contactXMLString;
 
+			contactInfo = contactXMLString;
+			
 			// Calling mobileContact of government class
 			contactEstablished = contactTracer.mobileContact(initiator, contactInfo);
 
