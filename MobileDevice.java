@@ -16,12 +16,9 @@ public class MobileDevice {
 	// Goverment object for database
 	private Government contactTracer;
 
-	// Max limit after which synchronize will be called
-	public static int LIMIT_TO_CALL_SYNC = 5;
-
 	// Map of Contacts where: key- connected individual's hash code, value-
 	// List<int>- date,duration
-	public Map<String, List<Integer>> DEVICE_CONTACTS = new HashMap<String, List<Integer>>();
+	public Map<String, Map<Integer, Integer>> MAP_DEVICE_CONTACTS = new HashMap<String, Map<Integer, Integer>>();
 
 	// ArrayList of mobileDevice users test results as testHash
 	public List<String> ALL_TEST_HASH = new ArrayList<String>();
@@ -37,17 +34,44 @@ public class MobileDevice {
 		try {
 			if (configurationFile != null && contactTracer != null) {
 
+				// Calling openConfigurationFile to Open configuration file and read network
+				// address of device and device name
+				openConfigurationFile(configurationFile);
+
+				this.contactTracer = contactTracer;
+
+			}
+		} catch (Exception e) {
+			System.out.println("ERROR: " + e.getMessage());
+		}
+	}
+
+	/*
+	 * openConfigurationFile() - Method to open configuration file to read and store
+	 * data from it
+	 * 
+	 * params - configurationFile - a path of configuration file
+	 */
+	private void openConfigurationFile(String configurationFile) {
+
+		if (configurationFile != null) {
+			try {
 				// Creatiing File object for configuration file.
 				File myObj = new File(configurationFile);
+
+				// Check weather file exist or not
 				if (myObj.exists()) {
 
 					// Using scanner to read config file
 					Scanner reader = new Scanner(myObj);
+
+					// While has next line to read
 					while (reader.hasNext()) {
 
-						// storing netork address
+						// storing device details into array line by line
 						String[] deviceData = reader.nextLine().split("=");
 
+						// Storing network address
 						if (deviceData[0].equals("address")) {
 							this.NETWORK_ADDRESS = deviceData[1];
 						}
@@ -57,19 +81,15 @@ public class MobileDevice {
 							this.DEVICE_NAME = deviceData[1];
 						}
 					}
-
 					// Close reader
 					reader.close();
 
 				} else {
 					System.out.println("The file does not exist.");
 				}
-
-				this.contactTracer = contactTracer;
-
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-		} catch (Exception e) {
-			System.out.println("ERROR: " + e.getMessage());
 		}
 	}
 
@@ -85,18 +105,36 @@ public class MobileDevice {
 
 		if (individual != null) {
 
-			// Creating List of date and duration of the contact
-			List<Integer> listDateAndTime = new ArrayList<Integer>();
-			listDateAndTime.add(date);
-			listDateAndTime.add(duration);
+			// Map to get if any individual with same naem already exist
+			Map<Integer, Integer> mapContactDetails = MAP_DEVICE_CONTACTS.get(individual);
 
-			// Storing individual's hashCode as a map key and List of date and duration as a
-			// value inside HashMap
-			DEVICE_CONTACTS.put(individual, listDateAndTime);
+			// If some same individual already stored
+			if (mapContactDetails != null) {
 
-			// Call syncronizeData if limit of contacts exceeds.
-			if (DEVICE_CONTACTS.size() >= LIMIT_TO_CALL_SYNC) {
-				synchronizeData();
+				// getting value on date to check if individual has contacted on the same day
+				// twice
+				Integer tempDurationOnDate = mapContactDetails.get(date);
+
+				// if Contacted on same day
+				if (tempDurationOnDate != null) {
+
+					// Add duration to it
+					mapContactDetails.replace(date, (tempDurationOnDate + duration));
+				} else {
+					// Add same individual with different date in inner map
+					mapContactDetails.put(date, duration);
+				}
+
+				// Replace data for repeted individual as a new data
+				MAP_DEVICE_CONTACTS.replace(individual, mapContactDetails);
+			} else {
+
+				// Map of new date and time for new individual contact
+				Map<Integer, Integer> mapDateTime = new HashMap<Integer, Integer>();
+				mapDateTime.put(date, duration);
+
+				// Put new data of date and time into map
+				MAP_DEVICE_CONTACTS.put(individual, mapDateTime);
 			}
 		}
 	}
@@ -108,8 +146,14 @@ public class MobileDevice {
 	 * parameters- testHash- a unique hashCode of the test result
 	 */
 	public void positiveTest(String testHash) {
-		// Storing testHash- a unique string into an arrayList
-		ALL_TEST_HASH.add(testHash);
+
+		if (testHash != null) {
+			if (testHash.matches("^[a-zA-Z0-9]*$")) {
+
+				// Storing testHash- a unique string into an arrayList
+				ALL_TEST_HASH.add(testHash);
+			}
+		}
 	}
 
 	/*
@@ -122,43 +166,58 @@ public class MobileDevice {
 	 */
 	public boolean synchronizeData() {
 
+		// To store result after Checking from database
 		boolean contactEstablished = false;
 
 		if (NETWORK_ADDRESS != null && DEVICE_NAME != null) {
 
+			// Creating initiator from network address and device name
 			String initiator = Integer.toString((NETWORK_ADDRESS + DEVICE_NAME).hashCode());
+
+			// ContactInfo in XML format
 			String contactInfo = "";
 
-			// testHash of mobileDevide user into xml
+			// String of test hashes od mobile device in XML format string
 			String testHashesFormattedString = "";
+
+			// Generating xml for testHashes
 			testHashesFormattedString += ("<device_tests>");
 			for (String str : ALL_TEST_HASH) {
-				testHashesFormattedString += ("\n\t<test_hash>" + str + "</test_hash>");
+
+				// Formatting String into xml
+				testHashesFormattedString += ("\n\t<test>" + "\n\t\t<test_hash>" + str + "</test_hash>"
+						+ "\n\t</test>");
 			}
 			testHashesFormattedString += ("\n</device_tests>");
 
-			// Contact XML
+			// String of contacts details of mobile device in XML format string
 			String contactXMLString = "";
-			contactXMLString += ("\n<contact_info>");
 
-			for (String contact : DEVICE_CONTACTS.keySet()) {
-				contactXMLString += ("\n\t<contact>" +
-										"\n\t\t<contact_hash>" + contact + "</contact_hash>" +
-										"\n\t\t<date>" + DEVICE_CONTACTS.get(contact).get(0) + "</date>" +
-										"\n\t\t<duration>" + DEVICE_CONTACTS.get(contact).get(1) + "</duration>" +
-									"\n\t</contact>");
+			// Generating xml for contact details
+			contactXMLString += ("\n<contact_info>");
+			for (String contact : MAP_DEVICE_CONTACTS.keySet()) {
+				Map<Integer, Integer> tempMap = MAP_DEVICE_CONTACTS.get(contact);
+
+				for (Integer contactDate : tempMap.keySet()) {
+
+					// Formatting String into xml
+					contactXMLString += ("\n\t<contact>" + "\n\t\t<contact_hash>" + contact + "</contact_hash>"
+							+ "\n\t\t<date>" + contactDate + "</date>" + "\n\t\t<duration>" + tempMap.get(contactDate)
+							+ "</duration>" + "\n\t</contact>");
+				}
 			}
 			contactXMLString += ("\n</contact_info>");
 
-			// creating Xml of testHash of mobile device and contact info of contacted
-			// devices
-			//contactInfo = testHashesFormattedString + contactXMLString;
+			// creating Xml of testHash of mobile device and contact info of with main root
+			// tag of xml containing all details
+			contactInfo = "<government_data>\n" + testHashesFormattedString + contactXMLString + "\n</government_data>";
 
-			contactInfo = contactXMLString;
-			
 			// Calling mobileContact of government class
 			contactEstablished = contactTracer.mobileContact(initiator, contactInfo);
 
+			// releasing memory by clearing synced data
+			MAP_DEVICE_CONTACTS.clear();
+			ALL_TEST_HASH.clear();
 		}
 
 		return contactEstablished;
